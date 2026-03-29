@@ -630,6 +630,7 @@ export default function FlowCRM() {
                             {l.phone && <div className="lead-phone"><Icon name="phone" size={13} /> {l.phone}</div>}
                             {l.email && <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 6, display: "flex", alignItems: "center", gap: 4 }}><Icon name="mail" size={11} /> {l.email}</div>}
                             <div className="lead-meta-row">
+                              {l.dob && <span className="lead-meta-tag">DOB: {l.dob}</span>}
                               {l.age && <span className="lead-meta-tag">Age: {l.age}</span>}
                               {l.coverage && <span className="lead-meta-tag">{l.coverage}</span>}
                               {l.source && <span className="lead-meta-tag">{l.source}</span>}
@@ -924,7 +925,7 @@ function AddUserModal({ onClose, onSuccess }) {
 
 // ═══ ADD LEAD ═══
 function AddLeadModal({ team, currentUser, onClose, onSave }) {
-  const [f, sf] = useState({ firstName: "", lastName: "", email: "", phone: "", age: "", budget: "", coverage: "", source: "Facebook", initialNote: "", assignedTo: currentUser });
+  const [f, sf] = useState({ firstName: "", lastName: "", email: "", phone: "", dob: "", initialNote: "", assignedTo: currentUser });
   const u = (k, v) => sf(p => ({ ...p, [k]: v }));
   return (
     <div className="mo" onClick={onClose}>
@@ -935,17 +936,10 @@ function AddLeadModal({ team, currentUser, onClose, onSave }) {
             <div className="fg"><label className="fl">First Name</label><input className="fi" value={f.firstName} onChange={e => u("firstName", e.target.value)} placeholder="John" /></div>
             <div className="fg"><label className="fl">Last Name</label><input className="fi" value={f.lastName} onChange={e => u("lastName", e.target.value)} placeholder="Smith" /></div>
           </div>
+          <div className="fg"><label className="fl">Date of Birth / Age</label><input className="fi" value={f.dob} onChange={e => u("dob", e.target.value)} placeholder="MM/DD/YYYY or age (e.g. 67)" /></div>
           <div className="fr">
-            <div className="fg"><label className="fl">Email</label><input className="fi" value={f.email} onChange={e => u("email", e.target.value)} /></div>
-            <div className="fg"><label className="fl">Phone</label><input className="fi" value={f.phone} onChange={e => u("phone", e.target.value)} /></div>
-          </div>
-          <div className="fr">
-            <div className="fg"><label className="fl">Age</label><select className="fs" value={f.age} onChange={e => u("age", e.target.value)}><option value="">Select</option>{AGE_RANGES.map(a => <option key={a}>{a}</option>)}</select></div>
-            <div className="fg"><label className="fl">Source</label><select className="fs" value={f.source} onChange={e => u("source", e.target.value)}>{SOURCES.map(s => <option key={s}>{s}</option>)}</select></div>
-          </div>
-          <div className="fr">
-            <div className="fg"><label className="fl">Budget</label><select className="fs" value={f.budget} onChange={e => u("budget", e.target.value)}><option value="">Select</option>{BUDGET_RANGES.map(b => <option key={b}>{b}</option>)}</select></div>
-            <div className="fg"><label className="fl">Coverage</label><select className="fs" value={f.coverage} onChange={e => u("coverage", e.target.value)}><option value="">Select</option>{COVERAGE_RANGES.map(c => <option key={c}>{c}</option>)}</select></div>
+            <div className="fg"><label className="fl">Phone</label><input className="fi" value={f.phone} onChange={e => u("phone", e.target.value)} placeholder="(555) 123-4567" /></div>
+            <div className="fg"><label className="fl">Email</label><input className="fi" type="email" value={f.email} onChange={e => u("email", e.target.value)} placeholder="john@email.com" /></div>
           </div>
           {team.length > 1 && (
             <div className="fg"><label className="fl">Assign To</label>
@@ -1018,7 +1012,7 @@ function DetailModal({ lead, isAdmin, team, onClose, onUpdate, onDelete }) {
           <div className="ds"><div className="ds-t">Info</div>
             {!editing ? (
               <div className="dg">
-                {[["Email", lead.email], ["Phone", lead.phone], ["Age", lead.age], ["Source", lead.source], ["Budget", lead.budget], ["Coverage", lead.coverage]].map(([l, v], i) => (
+                {[["Email", lead.email], ["Phone", lead.phone], ["DOB / Age", lead.dob || lead.age], ["Source", lead.source]].map(([l, v], i) => (
                   <div key={i}><div className="df-l">{l}</div><div className="df-v">{v || "—"}</div></div>
                 ))}
               </div>
