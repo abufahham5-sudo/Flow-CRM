@@ -72,6 +72,7 @@ function Icon({ name, size = 18 }) {
     refresh: <><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></>,
     book: <><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></>,
     shield: <><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></>,
+    menu: <><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></>,
   };
   return <svg viewBox="0 0 24 24" {...s}>{icons[name]}</svg>;
 }
@@ -255,6 +256,80 @@ body,#root{font-family:'Sora',sans-serif;background:var(--bg-deep);color:var(--t
 /* Empty */
 .empty{text-align:center;padding:50px 20px;color:var(--text-3)}
 .empty h3{font-family:'Outfit',sans-serif;font-size:16px;margin-bottom:6px;color:var(--text-2)}
+
+/* Mobile menu toggle */
+.mob-toggle{display:none;background:none;border:none;color:var(--text-2);cursor:pointer;padding:6px;border-radius:6px}
+.mob-toggle:hover{background:var(--accent-glow)}
+.sb-overlay{display:none}
+
+/* ═══ MOBILE ═══ */
+@media(max-width:768px){
+  .mob-toggle{display:flex}
+  .sb{position:fixed;left:-260px;top:0;bottom:0;width:250px;z-index:50;transition:left .3s;box-shadow:none}
+  .sb.open{left:0;box-shadow:8px 0 30px rgba(0,0,0,0.6)}
+  .sb-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:49}
+  .sb-overlay.open{display:block}
+  .hd{padding:14px 16px}
+  .hd-title{font-size:15px}
+  .hd-r{gap:6px}
+  .srch{width:140px;padding:6px 10px}
+  .srch input{font-size:11px}
+  .btn{padding:6px 10px;font-size:10px}
+  .cnt{padding:16px}
+  .mets{grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:18px}
+  .met{padding:14px}
+  .met-v{font-size:22px}
+  .met-l{font-size:8px}
+  .met-c{font-size:9px}
+  .leads-list{gap:10px}
+  .lead-row{border-radius:8px}
+  .lead-top{flex-direction:column}
+  .lead-left{width:100%;min-width:unset;padding:14px 16px 10px;border-right:none;border-bottom:1px solid var(--border)}
+  .lead-name{font-size:15px}
+  .lead-phone{font-size:13px}
+  .lead-meta-row{gap:5px}
+  .lead-meta-tag{font-size:8px;padding:2px 6px}
+  .lead-notes-area{padding:10px 16px 14px}
+  .lead-notepad{min-height:70px;font-size:11px}
+  .lead-notes-label{font-size:8px}
+  .lead-status{top:10px;right:12px;gap:4px}
+  .stg{font-size:9px;padding:2px 8px}
+  .prod-card{padding:16px;border-radius:8px}
+  .prod-card h3{font-size:13px;margin-bottom:10px}
+  .prod-table th{font-size:8px;padding:6px 8px}
+  .prod-table td{font-size:11px;padding:6px 8px}
+  .filt{gap:4px;margin-bottom:12px}
+  .fpill{padding:3px 8px;font-size:9px}
+  .goal-bar-wrap{height:6px}
+  .mo{align-items:flex-end}
+  .md{width:100%;max-height:90vh;border-radius:14px 14px 0 0;animation:mslide .25s}
+  .md-w{width:100%}
+  .md-h{padding:14px 18px}
+  .md-h h2{font-size:15px}
+  .md-b{padding:18px}
+  .md-f{padding:12px 18px}
+  .fg{margin-bottom:10px}
+  .fi,.fs,.ft{padding:8px 10px;font-size:11px}
+  .fl{font-size:9px}
+  .fr{grid-template-columns:1fr;gap:0}
+  .ds-t{font-size:8px}
+  .df-l{font-size:9px}
+  .df-v{font-size:12px}
+  .dg{grid-template-columns:1fr 1fr;gap:8px}
+  .stg-row{gap:4px}
+  .stg-btn{padding:3px 9px;font-size:9px}
+  .sb-stats{padding:12px 14px}
+  .sb-stat{font-size:10px}
+  .toast{bottom:16px;right:16px;left:16px;font-size:10px}
+  .imp-drop{padding:24px}
+}
+@keyframes mslide{from{transform:translateY(100%)}to{transform:translateY(0)}}
+
+@media(max-width:380px){
+  .mets{grid-template-columns:1fr}
+  .lead-status{position:relative;top:auto;right:auto;justify-content:flex-start;padding:0 16px 8px}
+  .dg{grid-template-columns:1fr}
+}
 `;
 
 export default function FlowCRM() {
@@ -278,6 +353,7 @@ export default function FlowCRM() {
   const [lastSync, setLastSync] = useState(null);
   const [toast, setToast] = useState(null);
   const [loaded, setLoaded] = useState(false);
+  const [mobMenu, setMobMenu] = useState(false);
   const fileRef = useRef(null);
 
   useEffect(() => {
@@ -503,7 +579,8 @@ export default function FlowCRM() {
     <>
       <style>{css}</style>
       <div className="app">
-        <aside className="sb">
+        <div className={`sb-overlay ${mobMenu ? "open" : ""}`} onClick={() => setMobMenu(false)} />
+        <aside className={`sb ${mobMenu ? "open" : ""}`}>
           <div className="sb-logo">
             <h1>FLOW</h1>
             <small>CRM</small>
@@ -516,7 +593,7 @@ export default function FlowCRM() {
               ["production", "trending", "Production"],
               ["import", "upload", "Sync"],
             ].map(([v, ic, lb]) => (
-              <button key={v} className={`nav-btn ${view === v ? "on" : ""}`} onClick={() => setView(v)}>
+              <button key={v} className={`nav-btn ${view === v ? "on" : ""}`} onClick={() => { setView(v); setMobMenu(false); }}>
                 <Icon name={ic} size={15} /> {lb}
               </button>
             ))}
@@ -531,9 +608,12 @@ export default function FlowCRM() {
 
         <main className="mn">
           <header className="hd">
-            <h2 className="hd-title">
-              {{ dashboard: "Dashboard", leads: "Leads", book: "Book of Business", production: "Production", import: "Sync & Import" }[view]}
-            </h2>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <button className="mob-toggle" onClick={() => setMobMenu(true)}><Icon name="menu" size={18} /></button>
+              <h2 className="hd-title">
+                {{ dashboard: "Dashboard", leads: "Leads", book: "Book of Business", production: "Production", import: "Sync & Import" }[view]}
+              </h2>
+            </div>
             <div className="hd-r">
               {view === "leads" && (
                 <>
