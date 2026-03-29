@@ -78,13 +78,9 @@ function Icon({ name, size = 18 }) {
 
 function FlowLogo({ size = 32 }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 40 40" fill="none">
-      <defs><linearGradient id="fgrad" x1="0" y1="0" x2="40" y2="40"><stop offset="0%" stopColor="#D4AA3C"/><stop offset="100%" stopColor="#8A6D1B"/></linearGradient></defs>
-      <rect x="1" y="1" width="38" height="38" rx="8" stroke="url(#fgrad)" strokeWidth="1.5" fill="none" opacity="0.4"/>
-      <path d="M12 10 L12 30" stroke="url(#fgrad)" strokeWidth="3.5" strokeLinecap="round"/>
-      <path d="M12 10 L27 10" stroke="url(#fgrad)" strokeWidth="3" strokeLinecap="round"/>
-      <path d="M12 19.5 L23 19.5" stroke="url(#fgrad)" strokeWidth="2.5" strokeLinecap="round"/>
-      <circle cx="30" cy="28" r="1" fill="#D4AA3C" opacity="0.5"/>
+    <svg width={size} height={size} viewBox="0 0 120 120" fill="none">
+      <rect x="2" y="2" width="116" height="116" rx="6" fill="#050505" stroke="#C0982A" strokeWidth="1" opacity="0.25"/>
+      <path d="M32 95 L32 25 L82 25 L88 19 L82 25 L82 31 L42 31 L42 55 L72 55 L78 49 L72 55 L72 61 L42 61 L42 95 Z" fill="#C0982A"/>
     </svg>
   );
 }
@@ -268,6 +264,9 @@ export default function FlowCRM() {
   const [showBookEdit, setShowBookEdit] = useState(null);
   const [showProdAdd, setShowProdAdd] = useState(false);
   const [showAddUser, setShowAddUser] = useState(false);
+  const [sheetUrl, setSheetUrl] = useState("");
+  const [syncing, setSyncing] = useState(false);
+  const [lastSync, setLastSync] = useState(null);
   const [mobMenu, setMobMenu] = useState(false);
   const [toast, setToast] = useState(null);
   const fileRef = useRef(null);
@@ -392,6 +391,60 @@ export default function FlowCRM() {
     flash("Entry removed");
   }
 
+  // Load sheet URL from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem("flow-sheet-url");
+    if (saved) setSheetUrl(saved);
+    const ls = localStorage.getItem("flow-last-sync");
+    if (ls) setLastSync(parseInt(ls));
+  }, []);
+
+  useEffect(() => {
+    if (sheetUrl) localStorage.setItem("flow-sheet-url", sheetUrl);
+    if (lastSync) localStorage.setItem("flow-last-sync", lastSync.toString());
+  }, [sheetUrl, lastSync]);
+
+  async function syncFromSheet() {
+    if (!sheetUrl) { flash("No Google Sheet URL set"); return; }
+    setSyncing(true);
+    try {
+      const res = await fetch(sheetUrl);
+      const text = await res.text();
+      const lines = text.trim().split("\n");
+      if (lines.length < 2) { flash("No data found in sheet"); setSyncing(false); return; }
+      const hdr = lines[0].split(",").map(h => h.trim().toLowerCase().replace(/"/g, ""));
+      let newCount = 0;
+      const existingKeys = new Set(leads.map(l => `${(l.firstName||"").toLowerCase()}_${(l.lastName||"").toLowerCase()}_${(l.email||"").toLowerCase()}_${(l.phone||"").replace(/\D/g,"")}`));
+      for (let i = 1; i < lines.length; i++) {
+        const vals = lines[i].split(",").map(x => x.trim().replace(/"/g, ""));
+        const r = {}; hdr.forEach((h, idx) => { r[h] = vals[idx] || ""; });
+        const ld = {
+          firstName: r["first_name"] || r["first name"] || r["firstname"] || r["name"]?.split(" ")[0] || "",
+          lastName: r["last_name"] || r["last name"] || r["lastname"] || r["name"]?.split(" ").slice(1).join(" ") || "",
+          email: r["email"] || r["email address"] || "",
+          phone: r["phone_number"] || r["phone number"] || r["phone"] || "",
+          age: r["age"] || r["age_range"] || r["age range"] || "",
+          budget: r["budget"] || r["monthly_budget"] || "",
+          coverage: r["coverage"] || r["coverage_amount"] || "",
+          source: r["platform"] || r["source"] || "Facebook",
+          initialNote: r["notes"] || "",
+          assignedTo: user.uid,
+        };
+        const key = `${(ld.firstName||"").toLowerCase()}_${(ld.lastName||"").toLowerCase()}_${(ld.email||"").toLowerCase()}_${(ld.phone||"").replace(/\D/g,"")}`;
+        if ((ld.firstName || ld.email || ld.phone) && !existingKeys.has(key)) {
+          await addLead(ld);
+          existingKeys.add(key);
+          newCount++;
+        }
+      }
+      setLastSync(Date.now());
+      flash(newCount > 0 ? `Synced ${newCount} new lead${newCount > 1 ? "s" : ""}` : "All leads up to date");
+    } catch (e) {
+      flash("Sync failed — check your Sheet URL");
+    }
+    setSyncing(false);
+  }
+
   function importCSV(text) {
     const lines = text.trim().split("\n");
     if (lines.length < 2) return 0;
@@ -498,6 +551,7 @@ export default function FlowCRM() {
             </div>
             <div className="hd-r">
               {view === "leads" && <div className="srch"><Icon name="search" size={14} /><input placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)} /></div>}
+              {view === "leads" && sheetUrl && <button className="btn btn-g" onClick={syncFromSheet} disabled={syncing} style={syncing ? { opacity: 0.6 } : {}}><Icon name="refresh" size={13} /> {syncing ? "..." : "Sync"}</button>}
               {view === "leads" && <button className="btn btn-p" onClick={() => setShowAdd(true)}><Icon name="plus" size={13} /> Add Lead</button>}
               {view === "book" && <button className="btn btn-p" onClick={() => setShowBookAdd(true)}><Icon name="plus" size={13} /> Add Policy</button>}
               {view === "production" && <button className="btn btn-p" onClick={() => setShowProdAdd(true)}><Icon name="plus" size={13} /> Log Sale</button>}
@@ -679,11 +733,43 @@ export default function FlowCRM() {
 
             {/* IMPORT */}
             {view === "import" && (
-              <div style={{ maxWidth: 560 }}>
+              <div style={{ maxWidth: 600 }}>
+                {/* Google Sheet Sync */}
+                <div className="prod-card" style={{ borderColor: sheetUrl ? "rgba(90,154,106,0.2)" : "var(--border)" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                    <div style={{ width: 8, height: 8, borderRadius: "50%", background: sheetUrl ? "var(--success)" : "var(--text-3)", boxShadow: sheetUrl ? "0 0 8px rgba(90,154,106,0.4)" : "none" }} />
+                    <h3 style={{ margin: 0 }}>{sheetUrl ? "Google Sheet connected" : "Connect Google Sheet"}</h3>
+                  </div>
+                  <p style={{ fontSize: 12, color: "var(--text-2)", lineHeight: 1.6, margin: "8px 0 16px" }}>
+                    Paste your published Google Sheet CSV link below. Zapier sends Meta leads to the sheet, then hit Sync to pull them in. Duplicates are skipped automatically.
+                  </p>
+                  <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+                    <input className="fi" placeholder="https://docs.google.com/spreadsheets/d/.../pub?output=csv" value={sheetUrl} onChange={e => setSheetUrl(e.target.value)} style={{ flex: 1, fontSize: 11 }} />
+                    <button className="btn btn-p" onClick={syncFromSheet} disabled={syncing || !sheetUrl} style={syncing ? { opacity: 0.6 } : {}}>
+                      {syncing ? "Syncing..." : "Sync Now"}
+                    </button>
+                  </div>
+                  {lastSync && (
+                    <div style={{ fontSize: 11, color: "var(--text-3)", display: "flex", alignItems: "center", gap: 4 }}>
+                      <Icon name="check" size={11} /> Last synced: {fmtDate(lastSync)}
+                    </div>
+                  )}
+                  {sheetUrl && (
+                    <div style={{ marginTop: 12, padding: 12, background: "var(--bg-input)", borderRadius: 6, fontSize: 11, color: "var(--text-2)", lineHeight: 1.7 }}>
+                      <strong style={{ color: "var(--accent-lt)" }}>How it works:</strong><br />
+                      1. Meta lead form → Zapier catches it<br />
+                      2. Zapier adds row to your Google Sheet<br />
+                      3. Click "Sync Now" to pull new leads into Flow<br />
+                      {isAdmin && "Leads are assigned to you. Reassign in lead details."}
+                    </div>
+                  )}
+                </div>
+
+                {/* Manual CSV */}
                 <div className="prod-card">
-                  <h3>Upload CSV</h3>
+                  <h3>Or upload CSV manually</h3>
                   <p style={{ fontSize: 12, color: "var(--text-2)", lineHeight: 1.6, margin: "8px 0 18px" }}>
-                    Export from Ads Manager → Lead Center → CSV. {isAdmin && "Leads will be assigned to you. Reassign them in lead details."}
+                    Export from Ads Manager → Lead Center → CSV format.
                   </p>
                   <input ref={fileRef} type="file" accept=".csv" style={{ display: "none" }} onChange={e => {
                     const f = e.target.files?.[0]; if (!f) return;
@@ -694,6 +780,15 @@ export default function FlowCRM() {
                   <div className="imp-drop" onClick={() => fileRef.current?.click()}>
                     <Icon name="upload" size={28} />
                     <p style={{ fontSize: 13, color: "var(--text-2)", marginTop: 8 }}>Click to upload CSV</p>
+                    <span style={{ fontSize: 11, color: "var(--text-3)" }}>Supports Meta Lead Form exports</span>
+                  </div>
+                </div>
+
+                {/* Format */}
+                <div className="prod-card">
+                  <h3>Expected column headers</h3>
+                  <div style={{ background: "var(--bg-input)", borderRadius: 6, padding: 12, fontSize: 11, fontFamily: "JetBrains Mono,monospace", color: "var(--accent-lt)", lineHeight: 1.8, marginTop: 8 }}>
+                    first_name, last_name, email, phone_number,<br />age, budget, coverage, platform, notes
                   </div>
                 </div>
               </div>
