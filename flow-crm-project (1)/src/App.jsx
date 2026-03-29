@@ -631,8 +631,9 @@ export default function FlowCRM() {
                             {l.email && <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 6, display: "flex", alignItems: "center", gap: 4 }}><Icon name="mail" size={11} /> {l.email}</div>}
                             <div className="lead-meta-row">
                               {l.dob && <span className="lead-meta-tag">DOB: {l.dob}</span>}
-                              {l.age && <span className="lead-meta-tag">Age: {l.age}</span>}
-                              {l.coverage && <span className="lead-meta-tag">{l.coverage}</span>}
+                              {l.age && !l.dob && <span className="lead-meta-tag">Age: {l.age}</span>}
+                              {l.militaryStatus && <span className="lead-meta-tag">{l.militaryStatus}</span>}
+                              {l.budget && <span className="lead-meta-tag">{l.budget}</span>}
                               {l.source && <span className="lead-meta-tag">{l.source}</span>}
                               {isAdmin && assignee && <span className="lead-meta-tag" style={{ color: "var(--accent)" }}>{assignee.name || assignee.email}</span>}
                             </div>
@@ -925,7 +926,7 @@ function AddUserModal({ onClose, onSuccess }) {
 
 // ═══ ADD LEAD ═══
 function AddLeadModal({ team, currentUser, onClose, onSave }) {
-  const [f, sf] = useState({ firstName: "", lastName: "", email: "", phone: "", dob: "", initialNote: "", assignedTo: currentUser });
+  const [f, sf] = useState({ firstName: "", lastName: "", email: "", phone: "", dob: "", militaryStatus: "", budget: "", initialNote: "", assignedTo: currentUser });
   const u = (k, v) => sf(p => ({ ...p, [k]: v }));
   return (
     <div className="mo" onClick={onClose}>
@@ -940,6 +941,25 @@ function AddLeadModal({ team, currentUser, onClose, onSave }) {
           <div className="fr">
             <div className="fg"><label className="fl">Phone</label><input className="fi" value={f.phone} onChange={e => u("phone", e.target.value)} placeholder="(555) 123-4567" /></div>
             <div className="fg"><label className="fl">Email</label><input className="fi" type="email" value={f.email} onChange={e => u("email", e.target.value)} placeholder="john@email.com" /></div>
+          </div>
+          <div className="fr">
+            <div className="fg"><label className="fl">Military Status</label>
+              <select className="fs" value={f.militaryStatus} onChange={e => u("militaryStatus", e.target.value)}>
+                <option value="">Select</option>
+                <option>Active Duty</option>
+                <option>Veteran</option>
+                <option>Retired</option>
+                <option>Reserve / Guard</option>
+                <option>Spouse / Dependent</option>
+                <option>Civilian</option>
+              </select>
+            </div>
+            <div className="fg"><label className="fl">Monthly Budget</label>
+              <select className="fs" value={f.budget} onChange={e => u("budget", e.target.value)}>
+                <option value="">Select</option>
+                {BUDGET_RANGES.map(b => <option key={b}>{b}</option>)}
+              </select>
+            </div>
           </div>
           {team.length > 1 && (
             <div className="fg"><label className="fl">Assign To</label>
@@ -1012,7 +1032,7 @@ function DetailModal({ lead, isAdmin, team, onClose, onUpdate, onDelete }) {
           <div className="ds"><div className="ds-t">Info</div>
             {!editing ? (
               <div className="dg">
-                {[["Email", lead.email], ["Phone", lead.phone], ["DOB / Age", lead.dob || lead.age], ["Source", lead.source]].map(([l, v], i) => (
+                {[["Email", lead.email], ["Phone", lead.phone], ["DOB / Age", lead.dob || lead.age], ["Military Status", lead.militaryStatus], ["Budget", lead.budget], ["Source", lead.source]].map(([l, v], i) => (
                   <div key={i}><div className="df-l">{l}</div><div className="df-v">{v || "—"}</div></div>
                 ))}
               </div>
